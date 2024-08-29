@@ -5,6 +5,7 @@ members = [
     "backends/ort",
     "backends/core",
     "backends/python",
+    "backends/tch",
     "backends/grpc-client",
     "core",
     "router",

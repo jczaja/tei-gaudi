@@ -12,6 +12,7 @@ serde_json = { workspace = true }
 text-embeddings-backend-core = { path = "core" }
 text-embeddings-backend-python = { path = "python", optional = true }
 text-embeddings-backend-candle = { path = "candle", optional = true }
+text-embeddings-backend-tch = { path = "tch", optional = true }
 text-embeddings-backend-ort = { path = "ort", optional = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
@@ -22,6 +23,7 @@ clap = ["dep:clap", "text-embeddings-backend-core/clap"]
 python = ["dep:text-embeddings-backend-python"]
 ort = ["dep:text-embeddings-backend-ort"]
 candle = ["dep:text-embeddings-backend-candle"]
+tch = ["dep:text-embeddings-backend-tch"]
 cuda = ["text-embeddings-backend-candle?/cuda"]
 metal = ["text-embeddings-backend-candle?/metal"]
 mkl = ["text-embeddings-backend-candle?/mkl"]
