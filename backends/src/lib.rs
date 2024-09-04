@@ -24,6 +24,9 @@ use text_embeddings_backend_ort::OrtBackend;
 #[cfg(feature = "python")]
 use text_embeddings_backend_python::PythonBackend;
 
+#[cfg(feature = "tch")]
+use text_embeddings_backend_tch::TchBackend;
+
 #[derive(Debug, Clone)]
 pub struct Backend {
     /// Channel to communicate with the background thread
