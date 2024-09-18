@@ -7,7 +7,7 @@ use text_embeddings_backend_core::{
     Backend, BackendError, Batch, Embedding, Embeddings, ModelType, Pool, Predictions,
 };
 
-use tch::{nn, nn::Module, nn::OptimizerConfig};//, Device, Hpu}; // TODO: make HPU after CPU
+use tch::{nn, nn::Module, nn::OptimizerConfig, nn::VarStore};//, Device, Hpu}; // TODO: make HPU after CPU
 
 
 // TODO: make for CPU
@@ -28,15 +28,76 @@ impl TchBackend {
         model_type: ModelType,
     ) -> Result<Self, BackendError> {
 
-        match model_type {
-            ModelType::Classifier => {}
-            ModelType::Embedding(pool) => {
-                if pool != Pool::Cls {
-                    return Err(BackendError::Start(format!("{pool:?} is not supported")));
+        let default_safetensors = model_path.join("model.safetensors");
+        let default_pytorch = model_path.join("pytorch_model.bin");
+
+        // Single Files
+        let model_files = if default_safetensors.exists() {
+            vec![default_safetensors]
+        } else if default_pytorch.exists() {
+            vec![default_pytorch]
+        }
+        // Sharded weights
+        else {
+            // Get index file
+            let index_file = model_path.join("model.safetensors.index.json");
+
+            // Parse file
+            let index_file_string: String = std::fs::read_to_string(&index_file)
+                .map_err(|err| BackendError::Start(err.to_string()))?;
+            let json: serde_json::Value = serde_json::from_str(&index_file_string)
+                .map_err(|err| BackendError::Start(err.to_string()))?;
+
+            let weight_map = match json.get("weight_map") {
+                None => {
+                    return Err(BackendError::Start(format!(
+                        "no weight map in {index_file:?}"
+                    )));
+                }
+                Some(serde_json::Value::Object(map)) => map,
+                Some(_) => {
+                    return Err(BackendError::Start(format!(
+                        "weight map in {index_file:?} is not a map"
+                    )));
+                }
+            };
+            let mut safetensors_files = std::collections::HashSet::new();
+            for value in weight_map.values() {
+                if let Some(file) = value.as_str() {
+                    safetensors_files.insert(file.to_string());
                 }
             }
+
+            // Collect paths
+            safetensors_files
+                .iter()
+                .map(|n| model_path.join(n))
+                .collect()
         };
 
+        // Load config
+        let config: String = std::fs::read_to_string(model_path.join("config.json"))
+            .context("Unable to read config file")
+            .map_err(|err| BackendError::Start(format!("{err:?}")))?;
+        let config: Config = serde_json::from_str(&config)
+            .context("Model is not supported")
+            .map_err(|err| BackendError::Start(format!("{err:?}")))?;
+
+
+        // Set Device (CPU then HPU)
+        // Set data type (f32)
+
+        // Make model files into model
+        // TODO: How to make safetensors lloaded
+        //
+        //
+
+        let vs = VarStore::new(Device::CPU);
+        // TODO: Load model desc
+        // TODO: miniGPT tutorial
+        //vs.load(model_files)?; // TODO: multiple files
+        vs.load("MODEL//models--BAAI--bge-large-en-v1.5/snapshots/d4aa6901d3a41ba39fb
+536a557fa166f842b0e09/model.safetensor")?;
 
         Ok(Self {
         })
@@ -54,12 +115,22 @@ impl Backend for TchBackend {
     }
 
     fn embed(&self, batch: Batch) -> Result<Embeddings, BackendError> {
-        if !batch.raw_indices.is_empty() {
-            return Err(BackendError::Inference(
-                "raw embeddings are not supported for the TCH backend.".to_string(),
-            ));
-        }
+        let pooled_indices = batch.pooled_indices.clone();
+        let raw_indices = batch.raw_indices.clone();
         let batch_size = batch.len();
+
+        // Used for indexing in the raw_embeddings tensor
+        let input_lengths: Vec<usize> = (0..batch.len())
+            .map(|i| {
+                (batch.cumulative_seq_lengths[i + 1] - batch.cumulative_seq_lengths[i]) as usize
+            })
+            .collect();
+
+        // Run forward
+        let (pooled_embeddings, raw_embeddings) = self.model.embed(batch).e()?;
+
+        // Get from device to CPU
+
         let mut embeddings =
             HashMap::with_capacity_and_hasher(batch_size, BuildNoHashHasher::default());
 
