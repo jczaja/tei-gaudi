@@ -8,6 +8,30 @@ use text_embeddings_backend_core::{
 };
 
 use tch::{nn, nn::Module, nn::OptimizerConfig, nn::VarStore};//, Device, Hpu}; // TODO: make HPU after CPU
+use serde::Deserialize;
+
+// https://github.com/huggingface/transformers/blob/6eedfa6dd15dc1e22a55ae036f681914e5a0d9a1/src/transformers/models/bert/configuration_bert.py#L1
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct BertConfig {
+    pub vocab_size: usize,
+    pub hidden_size: usize,
+    pub num_hidden_layers: usize,
+    pub num_attention_heads: usize,
+    pub intermediate_size: usize,
+    pub hidden_act: HiddenAct,
+    pub hidden_dropout_prob: f64,
+    pub max_position_embeddings: usize,
+    pub type_vocab_size: usize,
+    pub initializer_range: f64,
+    pub layer_norm_eps: f64,
+    pub pad_token_id: usize,
+    #[serde(default)]
+    pub position_embedding_type: PositionEmbeddingType,
+    #[serde(default)]
+    pub use_cache: bool,
+    pub classifier_dropout: Option<f64>,
+    pub id2label: Option<HashMap<String, String>>,
+}
 
 /// This enum is needed to be able to differentiate between jina models that also use
 /// the `bert` model type and valid Bert models.
