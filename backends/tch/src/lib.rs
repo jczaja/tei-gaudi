@@ -9,6 +9,37 @@ use text_embeddings_backend_core::{
 
 use tch::{nn, nn::Module, nn::OptimizerConfig, nn::VarStore};//, Device, Hpu}; // TODO: make HPU after CPU
 
+/// This enum is needed to be able to differentiate between jina models that also use
+/// the `bert` model type and valid Bert models.
+/// We use the `_name_or_path` field in the config to do so. This might not be robust in the long
+/// run but is still better than the other options...
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(tag = "_name_or_path")]
+pub enum BertConfigWrapper {
+    #[serde(rename = "jinaai/jina-bert-implementation")]
+    JinaBert(BertConfig),
+    #[serde(rename = "jinaai/jina-bert-v2-qk-post-norm")]
+    JinaCodeBert(BertConfig),
+    #[serde(untagged)]
+    Bert(BertConfig),
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "model_type", rename_all = "kebab-case")]
+enum Config {
+    Bert(BertConfigWrapper),
+    XlmRoberta(BertConfig),
+    Camembert(BertConfig),
+    Roberta(BertConfig),
+    #[serde(rename(deserialize = "distilbert"))]
+    DistilBert(DistilBertConfig),
+    #[serde(rename(deserialize = "nomic_bert"))]
+    NomicBert(NomicConfig),
+    Mistral(MistralConfig),
+    #[serde(rename = "new")]
+    Gte(GTEConfig),
+    Qwen2(Qwen2Config),
+}
 
 // TODO: make for CPU
 
